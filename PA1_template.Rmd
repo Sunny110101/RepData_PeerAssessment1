@@ -1,25 +1,100 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "week2-prj"
+author: "Ravi"
+date: "`r Sys.Date()`"
+output: html_document
 ---
 
+------------------------------------------------------------------------
 
-## Loading and preprocessing the data
+Reproducible Research: Peer Assessment 1 \## Loading and pre-processing the data
 
+First, we load the data and convert the `date` column to `Date` format.
 
+```{r load-data, echo=TRUE}
+data <- read.csv("activity.csv")
+data$date <- as.Date(data$date)
+```
 
-## What is mean total number of steps taken per day?
+We calculate the total number of steps taken per day and then create a histogram of these totals. We also calculate and report the mean and median total number of steps taken per day.
 
+```{r step1}
+# Total steps per day
+total_steps_per_day <- tapply(data$steps, data$date, sum, na.rm=TRUE)
 
+# Histogram of total steps per day
+hist(total_steps_per_day, main="Total Steps per Day", xlab="Steps", ylab="Frequency", col="blue")
 
-## What is the average daily activity pattern?
+# Mean and median of total steps per day
+mean_steps <- mean(total_steps_per_day, na.rm=TRUE)
+median_steps <- median(total_steps_per_day, na.rm=TRUE)
+mean_steps
+median_steps
+```
 
+We calculate the average number of steps taken in each 5-minute interval, across all days, and create a time series plot.
 
+```{r step2}
+# Average steps per 5-minute interval
+avg_steps_per_interval <- tapply(data$steps, data$interval, mean, na.rm=TRUE)
 
-## Imputing missing values
+# Time series plot of average steps per interval
+plot(names(avg_steps_per_interval), avg_steps_per_interval, type="l", 
+     main="Average Steps per Interval", xlab="Interval", ylab="Average Steps")
 
+# 5-minute interval with maximum average steps
+max_interval <- names(avg_steps_per_interval)[which.max(avg_steps_per_interval)]
+max_interval
+```
 
+Imputing missing values
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r step3}
+# Total number of missing values
+missing_values <- sum(is.na(data$steps))
+missing_values
+
+# Impute missing values
+imputed_data <- data
+for (i in 1:nrow(imputed_data)) {
+  if (is.na(imputed_data$steps[i])) {
+    interval <- imputed_data$interval[i]
+    imputed_data$steps[i] <- avg_steps_per_interval[as.character(interval)]
+  }
+}
+# Total steps per day after imputation
+total_steps_per_day_imputed <- tapply(imputed_data$steps, imputed_data$date, sum)
+
+# Histogram of total steps per day (imputed data)
+hist(total_steps_per_day_imputed, main="Total Steps per Day (Imputed)", xlab="Steps", ylab="Frequency", col="green")
+
+# Mean and median of total steps per day (imputed data)
+mean_steps_imputed <- mean(total_steps_per_day_imputed)
+median_steps_imputed <- median(total_steps_per_day_imputed)
+mean_steps_imputed
+median_steps_imputed
+```
+
+We create a new factor variable in the dataset with two levels -- "weekday" and "weekend".
+
+```{r step4}
+# Create a new factor variable for weekday/weekend
+imputed_data$weekday <- ifelse(weekdays(imputed_data$date) %in% c("Saturday", "Sunday"), "weekend", "weekday")
+```
+
+We create a panel plot containing a time series plot of the 5-minute interval and the average number of steps taken, averaged across all weekday days or weekend days.
+
+```{r step5}
+# Average steps per interval for weekdays and weekends
+avg_steps_weekday <- tapply(imputed_data$steps[imputed_data$weekday == "weekday"], 
+                            imputed_data$interval[imputed_data$weekday == "weekday"], mean)
+avg_steps_weekend <- tapply(imputed_data$steps[imputed_data$weekday == "weekend"], 
+                            imputed_data$interval[imputed_data$weekday == "weekend"], mean)
+
+# Panel plot comparing weekdays and weekends
+par(mfrow=c(2,1))
+plot(names(avg_steps_weekday), avg_steps_weekday, type="l", 
+     main="Average Steps per Interval (Weekday)", xlab="Interval", ylab="Average Steps")
+plot(names(avg_steps_weekend), avg_steps_weekend, type="l", 
+     main="Average Steps per Interval (Weekend)", xlab="Interval", ylab="Average Steps")
+```
